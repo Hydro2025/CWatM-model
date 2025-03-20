@@ -1,0 +1,266 @@
+We have modified the CWatM model in the evaporation, soil, and output modules to improve the calculation and output of crop yield.
+
+In the evaporation and soil modules, we introduced additional conditions and variables to make crop yield calculations more accurate and better aligned with the objectives of this study. The relevant modifications are located in lines 8–176 and 180–238 of the code.
+
+In the output module, we improved the output process by dynamically determining the dimensionality of the output variables, allowing for more flexible and precise output of the results. The corresponding modifications can be found in lines 242–265.
+Evapotation Model
+----------------------------------------------
+if dateVar['currDate'].month == 12 and dateVar['currDate'].day == 31:
+                    for c in range(len(self.var.Crops)):
+                        if self.var.Crops[c][0]==10:
+                            self.var.ratio_a_p_nonIrr[c] = np.where(
+                                self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,
+                                self.var.actTransTotal_month_nonIrr[c] / (self.var.totalPotET_month[c] * self.var.fracCrops_nonIrr[c]),
+                                0)  # This should always be <= 1.
+
+                            self.var.ratio_a_p_Irr[c] = np.where(
+                                self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,
+                                self.var.actTransTotal_month_Irr[c] / (self.var.totalPotET_month[c] * self.var.fracCrops_Irr[c]),
+                                0)  # This should always be <= 1.
+
+                            self.var.Yield_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_nonIrr[c] > 0, np.maximum(
+                                                                    1 - self.var.currentKY[c] * (
+                                                                            1 - self.var.ratio_a_p_nonIrr[c]), 0), 0), 0)
+
+                            self.var.Yield_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_Irr[c] > 0, np.maximum(
+                                                                1 - self.var.currentKY[c] * (
+                                                                        1 - self.var.ratio_a_p_Irr[c]), 0), 0), 0)
+                            self.var.crop_Tavg_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Tavg_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                            self.var.crop_Tavg_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Tavg_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                            self.var.crop_Tmin_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Tmin_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                            self.var.crop_Tmin_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Tmin_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                            self.var.crop_Tmax_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                            self.var.crop_Tmax_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                            self.var.crop_Precipitation_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Precipitation_month[c], 0), 0)
+                            self.var.crop_Precipitation_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Precipitation_month[c], 0), 0)
+                            self.var.crop_pet_nonirr[c]=np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.ETRef * self.var.fracCrops_nonIrr[c],0), 0)
+                            self.var.crop_pet_irr[c]=np.where(self.var.monthCounter[c] > 0,
+                                                                np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.ETRef * self.var.fracCrops_Irr[c],0), 0)
+                            self.var.crop_eta_nonirr[c]=np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.currentKY[c] * self.var.totalPotET_month[c] * self.var.fracCrops_nonIrr[c],0)
+                            self.var.crop_eta_irr[c]=np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.currentKY[c] * self.var.totalPotET_month[c] * self.var.fracCrops_Irr[c],0)
+                            # print('\n','###########','\n',dateVar['currDate'])
+                            # print(self.var.Crops_names[c],self.var.crop_Tmax_nonIrr[c].max(),self.var.crop_Precipitation_nonIrr[c].max(),'\n')
+                            # # print(self.var.Tavg_month[c].max(),'\n')
+                            # print(self.var.monthCounter[c].max())
+                            # print(self.var.Crops[c],'\n')
+                # if (dateVar['currDate']+timedelta(days=1)).day == 1:
+                #     print( dateVar['currDate'])
+                if dateVar['currDate'].day == 2:
+                    for c in range(len(self.var.Crops)):
+                        self.var.crop_Tavg_nonIrr[c] = globals.inZero.copy()
+                        self.var.crop_Tavg_Irr[c] = globals.inZero.copy()
+                        self.var.crop_Tmin_nonIrr[c] = globals.inZero.copy()
+                        self.var.crop_Tmin_Irr[c] = globals.inZero.copy()
+                        self.var.crop_Tmax_nonIrr[c] = globals.inZero.copy()
+                        self.var.crop_Tmax_Irr[c] = globals.inZero.copy()
+                        self.var.crop_Precipitation_nonIrr[c] = globals.inZero.copy()
+                        self.var.crop_Precipitation_Irr[c] = globals.inZero.copy()
+                        self.var.ratio_a_p_nonIrr[c] = globals.inZero.copy()
+                        self.var.ratio_a_p_Irr[c] = globals.inZero.copy()
+                        self.var.Yield_nonIrr[c] = globals.inZero.copy()
+                        self.var.Yield_Irr[c] = globals.inZero.copy()
+                        self.var.crop_pet_nonirr[c] = globals.inZero.copy()
+                        self.var.crop_pet_irr[c] = globals.inZero.copy()
+                        self.var.crop_eta_nonirr[c] = globals.inZero.copy()
+                        self.var.crop_eta_irr[c] = globals.inZero.copy()
+                    
+                # if dateVar['currDate'].day == 20:
+                #     print('\n',dateVar['currDate'].month)
+                #     print(self.var.Crops_names[1],self.var.monthCounter[1].max())
+                #     print(self.var.Crops[1])
+                if dateVar['currDate'].day == 1:
+                    # print('\n',dateVar['currDate'].month)
+                    # print(self.var.Crops_names[2],self.var.monthCounter[1].max())
+                    # print(self.var.Crops[2])
+                    # print(self.var.TMin.max(),self.var.TMin.min())
+                    if 'moveIrrFallowToNonIrr' in option:
+                        if checkOption('moveIrrFallowToNonIrr'):
+
+                            # The irrigated land class may have given up fallow land to the grasslands land class.
+                            # If this is the case, these fallow lands are returned to the irrigated land class briefly to
+                            # allow them to be planted on in the irrigated land class, and then returned to the
+                            # grasslands land class.
+
+                            self.var.fracVegCover[3] = self.var.irrigatedArea_original.copy()
+
+                            remainderLand = np.maximum(
+                                globals.inZero.copy() + 1 - self.var.fracVegCover[4] - self.var.fracVegCover[3] -
+                                self.var.fracVegCover[5] - self.var.fracVegCover[2] - self.var.fracVegCover[0],
+                                globals.inZero.copy())
+
+                            self.var.fracVegCover[1] = remainderLand.copy()
+
+                        
+                    for c in range(len(self.var.Crops)):
+                        # Dawn of the next month
+                        # We first harvest, and then we plant
+
+                        # Add a month, if the crop has already been planted
+
+                        self.var.monthCounter[c] += np.where(self.var.monthCounter[c] > 0, 1, 0)
+
+                        # Calculate relative yield for the last month
+
+                        self.var.ratio_a_p_nonIrr[c] = np.where(
+                            self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,
+                            self.var.actTransTotal_month_nonIrr[c] / (self.var.totalPotET_month[c] * self.var.fracCrops_nonIrr[c]),
+                            0)  # This should always be <= 1.
+
+                        self.var.ratio_a_p_Irr[c] = np.where(
+                            self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,
+                            self.var.actTransTotal_month_Irr[c] / (self.var.totalPotET_month[c] * self.var.fracCrops_Irr[c]),
+                            0)  # This should always be <= 1.
+
+                        self.var.Yield_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_nonIrr[c] > 0, np.maximum(
+                                                                1 - self.var.currentKY[c] * (
+                                                                        1 - self.var.ratio_a_p_nonIrr[c]), 0), 0), 0)
+
+                        self.var.Yield_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                         np.where(self.var.actTransTotal_month_Irr[c] > 0, np.maximum(
+                                                             1 - self.var.currentKY[c] * (
+                                                                     1 - self.var.ratio_a_p_Irr[c]), 0), 0), 0)
+                        self.var.crop_Tavg_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Tavg_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                        self.var.crop_Tavg_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Tavg_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                        self.var.crop_Tmin_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Tmin_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                        self.var.crop_Tmin_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Tmin_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                        self.var.crop_Tmax_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                        self.var.crop_Tmax_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day, 0), 0)
+                        # if c==3:
+                        #     print("###################",self.var.crop_Tmax_Irr[c].max(),(self.var.Tmax_month[c]/((dateVar['currDate']-timedelta(days=1)).day)).max(),(dateVar['currDate']-timedelta(days=1)).day,"###################")
+                        self.var.crop_Precipitation_nonIrr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.Precipitation_month[c], 0), 0)
+                        self.var.crop_Precipitation_Irr[c] = np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.Precipitation_month[c], 0), 0)
+                        self.var.crop_pet_nonirr[c]=np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_nonIrr[c] > 0, self.var.ETRef * self.var.fracCrops_nonIrr[c],0), 0)
+                        self.var.crop_pet_irr[c]=np.where(self.var.monthCounter[c] > 0,
+                                                            np.where(self.var.actTransTotal_month_Irr[c] > 0, self.var.ETRef * self.var.fracCrops_Irr[c],0), 0)
+                        self.var.crop_eta_nonirr[c]=np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.currentKY[c] * self.var.totalPotET_month[c] * self.var.fracCrops_nonIrr[c],0)
+                        self.var.crop_eta_irr[c]=np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.currentKY[c] * self.var.totalPotET_month[c] * self.var.fracCrops_Irr[c],0)
+                        # With the previous month's calculations of yields completed, on this first day of the month, we
+                        # reset the running totals of potential transpiration and transpiration (m)
+                        # if c == 0:
+                        #     print('\n',dateVar['currDate'])
+                        #     print(self.var.Crops_names[c],self.var.crop_Tmax_nonIrr[c].max(),self.var.crop_Precipitation_nonIrr[c].max())
+                        #     # print(self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day-273.15)
+                        #     print('####')
+                        #     print((self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day).max())
+                        #     # print(((self.var.Tmax_month[c]/(dateVar['currDate']-timedelta(days=1)).day).max()-273.15))
+                        #     print('\n')
+                        self.var.totalPotET_month[c] = globals.inZero.copy()
+                        self.var.actTransTotal_month_nonIrr[c] = globals.inZero.copy()
+                        self.var.actTransTotal_month_Irr[c] = globals.inZero.copy()
+                        self.var.irr_crop_month[c] = globals.inZero.copy()
+                        self.var.irr_Paddy_month = globals.inZero.copy()
+                        self.var.Tmax_month[c] = globals.inZero.copy()
+                        self.var.Tmin_month[c] = globals.inZero.copy()
+                        self.var.Tavg_month[c] = globals.inZero.copy()
+                        self.var.Precipitation_month[c] = globals.inZero.copy()
+--------------------------------------------------------------------------------------
+Soil Module
+--------------------------------------------------------------------------------------
+for c in range(len(self.var.Crops)):
+
+                    #self.var.actTransTotal_crops_Irr[c] = np.where(self.var.fracVegCover[3] * (self.var.cropKC[3]-self.var.minCropKC) > 0, (
+                    #            self.var.fracCrops_Irr[c] * (self.var.currentKC[c] - self.var.minCropKC)) / (self.var.fracVegCover[3] *
+                    #                                                                  (self.var.cropKC[3]-self.var.minCropKC)),
+                    #                                                                                         0) * self.var.actTransTotal_nonpaddy
+
+                    self.var.actTransTotal_crops_Irr[c] = np.where(
+                        self.var.fracCrops_Irr[c] * self.var.weighted_KC_Irr_woFallow > 0, (
+                                self.var.fracCrops_Irr[c] * (self.var.currentKC[c]-self.var.minCropKC)) / self.var.weighted_KC_Irr_woFallow,
+                        0) * self.var.actTransTotal_nonpaddy
+
+                    self.var.actTransTotal_month_Irr[c] += self.var.actTransTotal_crops_Irr[c] + \
+                                                           self.var.actBareSoilEvap[3] * self.var.fracCrops_Irr[c]
+
+                    self.var.actTransTotal_crops_nonIrr[c] = \
+                        np.where(self.var.fracCrops_nonIrr[c] * self.var.cropKC[1] > 0,
+                                 (self.var.fracCrops_nonIrr[c] * (self.var.currentKC[c]-self.var.minCropKC)) /
+                                 self.var.weighted_KC_nonIrr_woFallow, 0) * self.var.actTransTotal_grasslands
+                    self.var.crop_daily_Precipitation_nonIrr[c]=np.where(self.var.fracCrops_nonIrr[c] * self.var.cropKC[1] > 0,
+                                 self.var.Precipitation, 0) 
+                    self.var.crop_daily_Precipitation_Irr[c]=np.where(self.var.fracCrops_Irr[c] * self.var.cropKC[1] > 0,
+                                 self.var.Precipitation, 0) 
+                    self.var.crop_pe_Irr[c]=np.where(self.var.crop_daily_Precipitation_Irr[c]<8.34,self.var.crop_daily_Precipitation_Irr[c]*(4.17-0.2*self.var.crop_daily_Precipitation_Irr[c])/4.17,
+                                                     4.17+0.1*self.var.crop_daily_Precipitation_Irr[c])
+                    self.var.crop_pe_nonIrr[c]=np.where(self.var.crop_daily_Precipitation_nonIrr[c]<8.43,self.var.crop_daily_Precipitation_nonIrr[c]*(4.17-0.2*self.var.crop_daily_Precipitation_nonIrr[c])/4.17,
+                                                     4.17+0.1*self.var.crop_daily_Precipitation_nonIrr[c])
+                    self.var.crop_daily_tavg_nonIrr[c]=np.where(self.var.fracCrops_nonIrr[c] * self.var.cropKC[1] > 0,
+                                 self.var.Tavg, 0) 
+                    self.var.crop_daily_tavg_Irr[c]=np.where(self.var.fracCrops_Irr[c] * self.var.cropKC[1] > 0,
+                                 self.var.Tavg, 0) 
+                    self.var.Tavg_month+=self.var.Tavg
+                    self.var.Precipitation_month[c]+=self.var.Precipitation
+                    self.var.Tmin_month[c]+=self.var.TMin
+                    # if c==3:
+                    #     print(self.var.crop_Tmax_nonIrr[c].max())
+                    self.var.Tmax_month[c]+=self.var.TMax
+                    self.var.actTransTotal_month_nonIrr[c] += self.var.actTransTotal_crops_nonIrr[c] + \
+                                                              self.var.actBareSoilEvap[1] * self.var.fracCrops_nonIrr[c]
+                    # print(self.var.actTransTotal_month_nonIrr[c].max())
+                    self.var.eta_nonIrr[c]=self.var.actTransTotal_crops_nonIrr[c] + \
+                                                              self.var.actBareSoilEvap[1] * self.var.fracCrops_nonIrr[c]
+                    self.var.eta_Irr[c]=self.var.actTransTotal_crops_Irr[c] + \
+                                                           self.var.actBareSoilEvap[3] * self.var.fracCrops_Irr[c]
+                    self.var.ratio_et_Irr[c] = np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,(self.var.actTransTotal_crops_Irr[c] + \
+                                                           self.var.actBareSoilEvap[3] * self.var.fracCrops_Irr[c])/(self.var.totalPotET_month[c] * self.var.fracCrops_Irr[c]),0)
+                    self.var.ratio_et_nonIrr[c] = np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,(self.var.actTransTotal_crops_nonIrr[c] + \
+                                                              self.var.actBareSoilEvap[1] * self.var.fracCrops_nonIrr[c])/(self.var.totalPotET_month[c] * self.var.fracCrops_nonIrr[c]),0)
+                    self.var.ky_ratio_et_Irr[c] = np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.currentKC[c]*(self.var.actTransTotal_crops_Irr[c] + \
+                                                           self.var.actBareSoilEvap[3] * self.var.fracCrops_Irr[c])/(self.var.totalPotET_month[c] * self.var.fracCrops_Irr[c]),0)
+                    self.var.ky_ratio_et_nonIrr[c] = np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.currentKC[c]*(self.var.actTransTotal_crops_nonIrr[c] + \
+                                                              self.var.actBareSoilEvap[1] * self.var.fracCrops_nonIrr[c])/(self.var.totalPotET_month[c] * self.var.fracCrops_nonIrr[c]),0)
+                    self.var.PotET_crop_nonIrr[c] = np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.PotET_crop[c] * self.var.fracCrops_nonIrr[c],0)
+                    self.var.PotET_crop_Irr[c] = np.where(self.var.totalPotET_month[c] * self.var.activatedCrops[c] > 0,self.var.PotET_crop[c] * self.var.fracCrops_Irr[c],0)
+                    
+                    self.var.irr_crop[c] = np.where(
+                        self.var.frac_totalIrr * self.var.weighted_KC_Irr_woFallow > 0, (
+                                self.var.fracCrops_Irr[c] * self.var.currentKC[c]) / self.var.weighted_KC_Irr_woFallow_fullKc,
+                        0) * self.var.act_irrNonpaddyWithdrawal
+----------------------------------------------------------------------------------------------------
+Output Module
+----------------------------------------------------------------------------------------------------
+if map[-5:] == "daily":
+                            # print(varname)
+                            # print( varname)
+                            # print(eval(inputmap))
+                            ################################################################# 改 #############################################################
+                            array_ndim = eval(inputmap).ndim
+
+                            if array_ndim == 1:
+                                outMap[map][i][2] = writenetcdf(netfile, varname,"", "undefined", eval(inputmap),  dateVar['currDate'],dateVar['currwrite'], flag, True, dateVar['diffdays'])
+                            elif array_ndim == 2:
+                                for arc in range(eval(inputmap).shape[0]):
+                                    outMap[map][i][2] = writenetcdf(netfile[:-3]+f'_{self.var.Crops_names[arc]}.nc', varname,"", "undefined", eval(inputmap)[arc],  dateVar['currDate'],dateVar['currwrite'], flag, True, dateVar['diffdays'])
+
+
+                        if map[-8:] == "monthend":
+                            if dateVar['checked'][dateVar['currwrite'] - 1]>0:
+                                array_ndim = eval(inputmap).ndim
+
+                                if array_ndim == 1:
+                                # print(varname)
+                                    outMap[map][i][2] = writenetcdf(netfile, varname, "_monthend", "undefined", eval(inputmap),  dateVar['currDate'], dateVar['currMonth'], flag,True,dateVar['diffMonth'])
+                                elif array_ndim == 2:
+                                    for arc in range(eval(inputmap).shape[0]):
+                                        outMap[map][i][2] = writenetcdf(netfile[:-3]+f'_{self.var.Crops_names[arc]}.nc', varname, "_monthend", "undefined", eval(inputmap)[arc],  dateVar['currDate'], dateVar['currMonth'], flag,True,dateVar['diffMonth'])
+-----------------------------------------------------------------------------------------
